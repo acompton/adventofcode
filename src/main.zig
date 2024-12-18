@@ -5,7 +5,7 @@ const DAY1_INPUT = "day1input.txt";
 
 const Locations = struct { left: std.ArrayList(i32), right: std.ArrayList(i32) };
 
-fn loadLocations(alloc: std.mem.Allocator) anyerror!Locations {
+fn loadLocations(alloc: std.mem.Allocator) !Locations {
     var dataDir = try std.fs.cwd().openDir(DATA_DIR, .{});
     defer dataDir.close();
 
@@ -47,7 +47,7 @@ fn loadLocations(alloc: std.mem.Allocator) anyerror!Locations {
     return locations;
 }
 
-fn day1(loc: Locations) anyerror!u32 {
+fn day1_part1(loc: Locations) !u32 {
     const leftCopy = try loc.left.clone();
     const rightCopy = try loc.right.clone();
     std.sort.block(i32, leftCopy.items, {}, std.sort.asc(i32));
@@ -59,6 +59,23 @@ fn day1(loc: Locations) anyerror!u32 {
     }
 
     return dist;
+}
+
+fn day1_part2(alloc: std.mem.Allocator, loc: Locations) !i32 {
+    var rightOccurrences = std.AutoHashMap(i32, i32).init(alloc);
+    defer rightOccurrences.deinit();
+
+    for (loc.right.items) |item| {
+        const entry = try rightOccurrences.getOrPutValue(item, 0);
+        entry.value_ptr.* += 1;
+    }
+
+    var similarity: i32 = 0;
+    for (loc.left.items) |item| {
+        similarity += item * (rightOccurrences.get(item) orelse 0);
+    }
+
+    return similarity;
 }
 
 pub fn main() !void {
@@ -74,7 +91,8 @@ pub fn main() !void {
 
     try stdout.print("Advent of Code 2024\n", .{});
     try stdout.print("-------------------\n", .{});
-    try stdout.print("Day 1: {!d}\n", .{day1(loc)});
+    try stdout.print("Day 1 Part 1: {!d}\n", .{day1_part1(loc)});
+    try stdout.print("      Part 2: {!d}\n", .{day1_part2(alloc, loc)});
 
     try bw.flush();
 }
