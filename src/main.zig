@@ -1,21 +1,14 @@
 const std = @import("std");
 
-const DATA_DIR = "data";
-const DAY1_INPUT = "day1input.txt";
-
-const Locations = struct { left: std.ArrayList(i32), right: std.ArrayList(i32) };
-
-fn loadLocations(alloc: std.mem.Allocator) !Locations {
-    var dataDir = try std.fs.cwd().openDir(DATA_DIR, .{});
-    defer dataDir.close();
-
-    var file = try dataDir.openFile(DAY1_INPUT, .{});
+fn day1(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !struct { dist: u32, similarity: i32 } {
+    var file = try dataDir.openFile("day1input.txt", .{});
     defer file.close();
 
     var bufReader = std.io.bufferedReader(file.reader());
     var reader = bufReader.reader();
 
-    var locations = Locations{ .left = std.ArrayList(i32).init(alloc), .right = std.ArrayList(i32).init(alloc) };
+    var leftLocations = std.ArrayList(i32).init(alloc);
+    var rightLocations = std.ArrayList(i32).init(alloc);
 
     var line: [16]u8 = undefined;
     var lineFbs = std.io.fixedBufferStream(&line);
@@ -38,44 +31,97 @@ fn loadLocations(alloc: std.mem.Allocator) !Locations {
         const leftNum = try std.fmt.parseInt(i32, line[0..5], 10);
         const rightNum = try std.fmt.parseInt(i32, line[8..13], 10);
 
-        try locations.left.append(leftNum);
-        try locations.right.append(rightNum);
+        try leftLocations.append(leftNum);
+        try rightLocations.append(rightNum);
 
         lineFbs.reset();
     }
 
-    return locations;
-}
-
-fn day1_part1(loc: Locations) !u32 {
-    const leftCopy = try loc.left.clone();
-    const rightCopy = try loc.right.clone();
-    std.sort.block(i32, leftCopy.items, {}, std.sort.asc(i32));
-    std.sort.block(i32, rightCopy.items, {}, std.sort.asc(i32));
+    std.sort.block(i32, leftLocations.items, {}, std.sort.asc(i32));
+    std.sort.block(i32, rightLocations.items, {}, std.sort.asc(i32));
 
     var dist: u32 = 0;
-    for (loc.left.items, loc.right.items) |left, right| {
+    for (leftLocations.items, rightLocations.items) |left, right| {
         dist += @abs(left - right);
     }
 
-    return dist;
-}
-
-fn day1_part2(alloc: std.mem.Allocator, loc: Locations) !i32 {
     var rightOccurrences = std.AutoHashMap(i32, i32).init(alloc);
     defer rightOccurrences.deinit();
 
-    for (loc.right.items) |item| {
+    for (rightLocations.items) |item| {
         const entry = try rightOccurrences.getOrPutValue(item, 0);
         entry.value_ptr.* += 1;
     }
 
     var similarity: i32 = 0;
-    for (loc.left.items) |item| {
+    for (leftLocations.items) |item| {
         similarity += item * (rightOccurrences.get(item) orelse 0);
     }
 
-    return similarity;
+    return .{ .dist = dist, .similarity = similarity };
+}
+
+fn day2(dataDir: std.fs.Dir) !i32 {
+    var file = try dataDir.openFile("day2input.txt", .{});
+    defer file.close();
+
+    var bufReader = std.io.bufferedReader(file.reader());
+    var fileReader = bufReader.reader();
+
+    var line: [32]u8 = undefined;
+    var lineFbs = std.io.fixedBufferStream(&line);
+    const lineWriter = lineFbs.writer();
+
+    var safeReports: i32 = 0;
+    var lastNum: ?i32 = null;
+    var lastDir: ?i32 = null;
+    var isSafe: bool = true;
+
+    while (true) {
+        const byte = fileReader.readByte() catch {
+            break;
+        };
+
+        var eol = byte == '\n';
+
+        if (byte == ' ' or byte == '\n') {
+            const num = try std.fmt.parseInt(i32, line[0..lineFbs.pos], 10);
+
+            if (lastNum != null) {
+                const diff: i32 = @intCast(@abs(num - lastNum.?));
+                const dir =
+                    if (diff != 0) @divExact(num - lastNum.?, diff) else 0;
+
+                if (lastDir == null) {
+                    lastDir = dir;
+                }
+
+                if (diff == 0 or diff > 3 or dir != lastDir) {
+                    try fileReader.skipUntilDelimiterOrEof('\n');
+                    isSafe = false;
+                    eol = true;
+                }
+            }
+
+            lastNum = num;
+
+            lineFbs.reset();
+        } else {
+            try lineWriter.writeByte(byte);
+        }
+
+        if (eol) {
+            if (isSafe) {
+                safeReports += 1;
+            }
+
+            lastNum = null;
+            lastDir = null;
+            isSafe = true;
+        }
+    }
+
+    return safeReports;
 }
 
 pub fn main() !void {
@@ -87,12 +133,13 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    const loc = try loadLocations(alloc);
+    var dataDir = try std.fs.cwd().openDir("data", .{});
+    defer dataDir.close();
 
     try stdout.print("Advent of Code 2024\n", .{});
     try stdout.print("-------------------\n", .{});
-    try stdout.print("Day 1 Part 1: {!d}\n", .{day1_part1(loc)});
-    try stdout.print("      Part 2: {!d}\n", .{day1_part2(alloc, loc)});
+    try stdout.print("Day 1: dist={!d} similarity={!d}\n", try day1(alloc, dataDir));
+    try stdout.print("Day 2: {d}\n", .{try day2(dataDir)});
 
     try bw.flush();
 }
