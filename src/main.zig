@@ -3,7 +3,9 @@ const std = @import("std");
 const DATA_DIR = "data";
 const DAY1_INPUT = "day1input.txt";
 
-fn day1(alloc: std.mem.Allocator) anyerror!u32 {
+const Locations = struct { left: std.ArrayList(i32), right: std.ArrayList(i32) };
+
+fn loadLocations(alloc: std.mem.Allocator) anyerror!Locations {
     var dataDir = try std.fs.cwd().openDir(DATA_DIR, .{});
     defer dataDir.close();
 
@@ -13,8 +15,7 @@ fn day1(alloc: std.mem.Allocator) anyerror!u32 {
     var bufReader = std.io.bufferedReader(file.reader());
     var reader = bufReader.reader();
 
-    var listLeft = std.ArrayList(i32).init(alloc);
-    var listRight = std.ArrayList(i32).init(alloc);
+    var locations = Locations{ .left = std.ArrayList(i32).init(alloc), .right = std.ArrayList(i32).init(alloc) };
 
     var line: [16]u8 = undefined;
     var lineFbs = std.io.fixedBufferStream(&line);
@@ -28,7 +29,7 @@ fn day1(alloc: std.mem.Allocator) anyerror!u32 {
                     break;
                 },
                 else => {
-                    std.debug.print("[day1] error reading file: {any}\n", .{err});
+                    std.debug.print("error reading file: {any}\n", .{err});
                     return err;
                 },
             }
@@ -37,17 +38,23 @@ fn day1(alloc: std.mem.Allocator) anyerror!u32 {
         const leftNum = try std.fmt.parseInt(i32, line[0..5], 10);
         const rightNum = try std.fmt.parseInt(i32, line[8..13], 10);
 
-        try listLeft.append(leftNum);
-        try listRight.append(rightNum);
+        try locations.left.append(leftNum);
+        try locations.right.append(rightNum);
 
         lineFbs.reset();
     }
 
-    std.sort.block(i32, listLeft.items, {}, std.sort.asc(i32));
-    std.sort.block(i32, listRight.items, {}, std.sort.asc(i32));
+    return locations;
+}
+
+fn day1(loc: Locations) anyerror!u32 {
+    const leftCopy = try loc.left.clone();
+    const rightCopy = try loc.right.clone();
+    std.sort.block(i32, leftCopy.items, {}, std.sort.asc(i32));
+    std.sort.block(i32, rightCopy.items, {}, std.sort.asc(i32));
 
     var dist: u32 = 0;
-    for (listLeft.items, listRight.items) |left, right| {
+    for (loc.left.items, loc.right.items) |left, right| {
         dist += @abs(left - right);
     }
 
@@ -63,9 +70,11 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
+    const loc = try loadLocations(alloc);
+
     try stdout.print("Advent of Code 2024\n", .{});
     try stdout.print("-------------------\n", .{});
-    try stdout.print("Day 1: {!d}\n", .{day1(alloc)});
+    try stdout.print("Day 1: {!d}\n", .{day1(loc)});
 
     try bw.flush();
 }
