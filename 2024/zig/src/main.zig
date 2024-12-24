@@ -129,6 +129,10 @@ fn day2(dataDir: std.fs.Dir) !i32 {
     return safeReports;
 }
 
+fn day3() !i32 {
+    return 0;
+}
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -145,6 +149,7 @@ pub fn main() !void {
     try stdout.print("-------------------\n", .{});
     try stdout.print("Day 1: dist={!d} similarity={!d}\n", try day1(alloc, dataDir));
     try stdout.print("Day 2: {d}\n", .{try day2(dataDir)});
+    try stdout.print("Day 3: {d}\n", .{try day3()});
 
     try bw.flush();
 }
