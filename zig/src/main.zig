@@ -68,56 +68,61 @@ fn day2(dataDir: std.fs.Dir) !i32 {
     var bufReader = std.io.bufferedReader(file.reader());
     var fileReader = bufReader.reader();
 
-    var line: [32]u8 = undefined;
-    var lineFbs = std.io.fixedBufferStream(&line);
-    const lineWriter = lineFbs.writer();
-
+    var line: [16]u8 = undefined;
+    var insertPos: usize = 0;
+    var linePos: usize = 0;
     var safeReports: i32 = 0;
-    var lastNum: ?i32 = null;
-    var lastDir: ?i32 = null;
-    var isSafe: bool = true;
 
     while (true) {
         const byte = fileReader.readByte() catch {
             break;
         };
 
-        var eol = byte == '\n';
-
         if (byte == ' ' or byte == '\n') {
-            const num = try std.fmt.parseInt(i32, line[0..lineFbs.pos], 10);
-
-            if (lastNum != null) {
-                const diff: i32 = @intCast(@abs(num - lastNum.?));
-                const dir =
-                    if (diff != 0) @divExact(num - lastNum.?, diff) else 0;
-
-                if (lastDir == null) {
-                    lastDir = dir;
-                }
-
-                if (diff == 0 or diff > 3 or dir != lastDir) {
-                    try fileReader.skipUntilDelimiterOrEof('\n');
-                    isSafe = false;
-                    eol = true;
-                }
-            }
-
-            lastNum = num;
-
-            lineFbs.reset();
+            const num = try std.fmt.parseInt(u8, line[insertPos..linePos], 10);
+            line[insertPos] = num;
+            insertPos += 1;
+            linePos = insertPos;
         } else {
-            try lineWriter.writeByte(byte);
+            line[linePos] = byte;
+            linePos += 1;
         }
 
-        if (eol) {
-            if (isSafe) {
-                safeReports += 1;
+        if (byte == '\n') {
+            for (0..linePos + 1) |i| {
+                var lastNum: ?i32 = null;
+                var lastDir: ?i32 = null;
+                var isSafe = true;
+
+                for (line[0..linePos], 0..linePos) |n, j| {
+                    if (i == j) continue;
+
+                    if (lastNum != null) {
+                        const diff: i32 = @intCast(@abs(n - lastNum.?));
+                        const dir =
+                            if (diff != 0) @divExact(n - lastNum.?, diff) else 0;
+
+                        if (lastDir == null) {
+                            lastDir = dir;
+                        }
+
+                        if (diff == 0 or diff > 3 or dir != lastDir) {
+                            isSafe = false;
+                            break;
+                        }
+                    }
+
+                    lastNum = n;
+                }
+
+                if (isSafe) {
+                    safeReports += 1;
+                    break;
+                }
             }
 
-            lastNum = null;
-            lastDir = null;
-            isSafe = true;
+            insertPos = 0;
+            linePos = 0;
         }
     }
 
