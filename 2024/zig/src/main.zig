@@ -1,5 +1,7 @@
 const std = @import("std");
 
+// Day 1
+
 fn day1(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !struct { dist: u32, similarity: i32 } {
     var file = try dataDir.openFile("day1input.txt", .{});
     defer file.close();
@@ -60,6 +62,8 @@ fn day1(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !struct { dist: u32, simi
 
     return .{ .dist = dist, .similarity = similarity };
 }
+
+// Day 2
 
 fn day2(dataDir: std.fs.Dir) !i32 {
     var file = try dataDir.openFile("day2input.txt", .{});
@@ -129,8 +133,59 @@ fn day2(dataDir: std.fs.Dir) !i32 {
     return safeReports;
 }
 
-fn day3() !i32 {
-    return 0;
+// Day 3
+fn day3(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !i32 {
+    var file = try dataDir.openFile("day3input.txt", .{});
+    defer file.close();
+
+    const fsize = (try file.stat()).size;
+    const content = try file.readToEndAlloc(alloc, fsize);
+    defer alloc.free(content);
+
+    var idx: usize = 0;
+    var sum: i32 = 0;
+
+    while (std.mem.indexOfPos(u8, content, idx, "mul(")) |start| {
+        idx = start + 4;
+
+        // read an integer
+        var parseEnd = idx;
+        while (std.ascii.isDigit(content[parseEnd]) and (parseEnd - idx) < 4) {
+            parseEnd += 1;
+        }
+
+        if (parseEnd - idx == 0) {
+            continue;
+        }
+
+        const arg0 = try std.fmt.parseInt(i32, content[idx..parseEnd], 10);
+
+        idx = parseEnd;
+
+        if (content[idx] == ',') {
+            idx += 1;
+        } else {
+            continue;
+        }
+
+        parseEnd = idx;
+        while (std.ascii.isDigit(content[parseEnd]) and (parseEnd - idx) < 4) {
+            parseEnd += 1;
+        }
+
+        if (parseEnd - idx == 0) {
+            continue;
+        }
+        const arg1 = try std.fmt.parseInt(i32, content[idx..parseEnd], 10);
+
+        idx = parseEnd;
+
+        if (content[idx] == ')') {
+            sum += arg0 * arg1;
+        }
+    }
+
+    return sum;
 }
 
 pub fn main() !void {
@@ -142,14 +197,18 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file);
     const stdout = bw.writer();
 
-    var dataDir = try std.fs.cwd().openDir("data", .{});
+    const dataDirPath = try std.fs.cwd().realpathAlloc(alloc, "../data");
+
+    std.debug.print("Data path: {s}\n", .{dataDirPath});
+
+    var dataDir = try std.fs.openDirAbsolute(dataDirPath, .{});
     defer dataDir.close();
 
     try stdout.print("Advent of Code 2024\n", .{});
     try stdout.print("-------------------\n", .{});
     try stdout.print("Day 1: dist={!d} similarity={!d}\n", try day1(alloc, dataDir));
     try stdout.print("Day 2: {d}\n", .{try day2(dataDir)});
-    try stdout.print("Day 3: {d}\n", .{try day3()});
+    try stdout.print("Day 3: {d}\n", .{try day3(alloc, dataDir)});
 
     try bw.flush();
 }
