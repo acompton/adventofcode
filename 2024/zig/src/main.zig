@@ -144,61 +144,63 @@ fn day3(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !i32 {
 
     var idx: usize = 0;
     var sum: i32 = 0;
-    var do = true;
+    var enabled = true;
+
+    const intParser = struct {
+        fn parseInt(extContent: []u8, extIdx: *usize) ?i32 {
+            var parseEnd = extIdx.*;
+
+            while (std.ascii.isDigit(extContent[parseEnd]) and (parseEnd - extIdx.*) < 4) {
+                parseEnd += 1;
+            }
+
+            if (parseEnd - extIdx.* == 0) {
+                return null;
+            }
+
+            const value = std.fmt.parseInt(i32, extContent[extIdx.*..parseEnd], 10) catch return null;
+
+            extIdx.* = parseEnd;
+
+            return value;
+        }
+    };
 
     while (idx < content.len - 8) {
-        if (do) {
-            if (std.mem.eql(u8, content[idx..(idx + 4)], "mul(")) {
-                idx = idx + 4;
-
-                var parseEnd = idx;
-                while (std.ascii.isDigit(content[parseEnd]) and (parseEnd - idx) < 4) {
-                    parseEnd += 1;
-                }
-
-                if (parseEnd - idx == 0) {
-                    continue;
-                }
-
-                const arg0 = try std.fmt.parseInt(i32, content[idx..parseEnd], 10);
-
-                idx = parseEnd;
-
-                if (content[idx] == ',') {
-                    idx += 1;
-                } else {
-                    continue;
-                }
-
-                parseEnd = idx;
-                while (std.ascii.isDigit(content[parseEnd]) and (parseEnd - idx) < 4) {
-                    parseEnd += 1;
-                }
-
-                if (parseEnd - idx == 0) {
-                    continue;
-                }
-                const arg1 = try std.fmt.parseInt(i32, content[idx..parseEnd], 10);
-                idx = parseEnd;
-
-                if (content[idx] == ')') {
-                    idx += 1;
-                    sum += arg0 * arg1;
-                }
-            } else if (std.mem.eql(u8, content[idx .. idx + 7], "don't()")) {
-                idx += 7;
-                do = false;
-            } else {
-                idx += 1;
-            }
-        } else {
-            if (std.mem.eql(u8, content[idx .. idx + 4], "do()")) {
-                idx += 4;
-                do = true;
-            } else {
-                idx += 1;
-            }
+        if (std.mem.eql(u8, content[idx .. idx + 4], "do()")) {
+            idx += 4;
+            enabled = true;
+            continue;
         }
+
+        if (std.mem.eql(u8, content[idx .. idx + 7], "don't()")) {
+            idx += 7;
+            enabled = false;
+            continue;
+        }
+
+        if (enabled and std.mem.eql(u8, content[idx..(idx + 4)], "mul(")) {
+            idx = idx + 4;
+
+            const arg0 = intParser.parseInt(content, &idx) orelse continue;
+
+            if (content[idx] == ',') {
+                idx += 1;
+            } else {
+                continue;
+            }
+
+            const arg1 = intParser.parseInt(content, &idx) orelse continue;
+
+            if (content[idx] == ')') {
+                idx += 1;
+                sum += arg0 * arg1;
+            }
+
+            continue;
+        }
+
+        idx += 1;
     }
 
     return sum;
