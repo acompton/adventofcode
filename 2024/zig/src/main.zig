@@ -222,16 +222,15 @@ const Day4 = struct {
         return self.content[@as(usize, @intCast(row)) * (self.cols + 1) + @as(usize, @intCast(col))];
     }
 
-    fn countXmas(self: *Day4, row: i32, col: i32) i32 {
+    fn countXmas_part1(self: *Day4, row: i32, col: i32) u32 {
         if (self.pos(row, col) != 'X') {
             return 0;
         }
 
         const tail = "MAS";
 
-        var tails: i32 = 0;
+        var tails: u32 = 0;
         var dy: i32 = -1;
-
         while (dy <= 1) : (dy += 1) {
             var dx: i32 = -1;
             outer: while (dx <= 1) : (dx += 1) {
@@ -255,13 +254,31 @@ const Day4 = struct {
         return tails;
     }
 
-    fn day4(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !i32 {
+    fn countXmas_part2(self: *Day4, row: i32, col: i32) u32 {
+        if (self.pos(row, col) == 'A') {
+            if ((self.pos(row - 1, col - 1) == 'M' and self.pos(row + 1, col + 1) == 'S') or
+                (self.pos(row - 1, col - 1) == 'S' and self.pos(row + 1, col + 1) == 'M'))
+            {
+                if ((self.pos(row + 1, col - 1) == 'M' and self.pos(row - 1, col + 1) == 'S') or
+                    (self.pos(row + 1, col - 1) == 'S' and self.pos(row - 1, col + 1) == 'M'))
+                {
+                    return 1;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    const CountXmasResult = struct { part1: u32, part2: u32 };
+
+    fn day4(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !CountXmasResult {
         const content = try readFile(alloc, dataDir, "day4input.txt");
         defer alloc.free(content);
         return countContentXmas(content);
     }
 
-    fn countContentXmas(content: []const u8) !i32 {
+    fn countContentXmas(content: []const u8) !CountXmasResult {
         const cols = std.mem.indexOfScalar(u8, content, '\n') orelse 0;
         const rows = (content.len + 1) / (cols + 1);
 
@@ -271,14 +288,16 @@ const Day4 = struct {
             .rows = rows,
         };
 
-        var total: i32 = 0;
+        var total_part1: u32 = 0;
+        var total_part2: u32 = 0;
         for (0..state.rows) |row| {
             for (0..state.cols) |col| {
-                total += state.countXmas(@intCast(row), @intCast(col));
+                total_part1 += state.countXmas_part1(@intCast(row), @intCast(col));
+                total_part2 += state.countXmas_part2(@intCast(row), @intCast(col));
             }
         }
 
-        return total;
+        return .{ .part1 = total_part1, .part2 = total_part2 };
     }
 };
 
@@ -296,7 +315,9 @@ test "day4 test 1" {
         \\MXMXAXMASX
     ;
 
-    try std.testing.expectEqual(18, try Day4.countContentXmas(content));
+    const res = try Day4.countContentXmas(content);
+    try std.testing.expectEqual(18, res.part1);
+    try std.testing.expectEqual(9, res.part2);
 }
 
 pub fn main() !void {
@@ -320,7 +341,7 @@ pub fn main() !void {
     try stdout.print("Day 1: dist={!d} similarity={!d}\n", try day1(alloc, dataDir));
     try stdout.print("Day 2: {d}\n", .{try day2(dataDir)});
     try stdout.print("Day 3: {d}\n", .{try day3(alloc, dataDir)});
-    try stdout.print("Day 4: {d}\n", .{try Day4.day4(alloc, dataDir)});
+    try stdout.print("Day 4: {d} {d}\n", try Day4.day4(alloc, dataDir));
 
     try bw.flush();
 }
