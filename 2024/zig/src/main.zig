@@ -1,7 +1,14 @@
 const std = @import("std");
 
-// Day 1
+// Common stuff
+fn readFile(alloc: std.mem.Allocator, dataDir: std.fs.Dir, fileName: []const u8) ![]const u8 {
+    const file = try dataDir.openFile(fileName, .{});
+    defer file.close();
 
+    return try file.readToEndAlloc(alloc, (try file.stat()).size);
+}
+
+// Day 1
 fn day1(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !struct { dist: u32, similarity: i32 } {
     var file = try dataDir.openFile("day1input.txt", .{});
     defer file.close();
@@ -64,7 +71,6 @@ fn day1(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !struct { dist: u32, simi
 }
 
 // Day 2
-
 fn day2(dataDir: std.fs.Dir) !i32 {
     var file = try dataDir.openFile("day2input.txt", .{});
     defer file.close();
@@ -135,11 +141,7 @@ fn day2(dataDir: std.fs.Dir) !i32 {
 
 // Day 3
 fn day3(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !i32 {
-    var file = try dataDir.openFile("day3input.txt", .{});
-    defer file.close();
-
-    const fsize = (try file.stat()).size;
-    const content = try file.readToEndAlloc(alloc, fsize);
+    const content = try readFile(alloc, dataDir, "day3input.txt");
     defer alloc.free(content);
 
     var idx: usize = 0;
@@ -147,7 +149,7 @@ fn day3(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !i32 {
     var enabled = true;
 
     const intParser = struct {
-        fn parseInt(extContent: []u8, extIdx: *usize) ?i32 {
+        fn parseInt(extContent: []const u8, extIdx: *usize) ?i32 {
             var parseEnd = extIdx.*;
 
             while (std.ascii.isDigit(extContent[parseEnd]) and (parseEnd - extIdx.*) < 4) {
@@ -206,6 +208,97 @@ fn day3(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !i32 {
     return sum;
 }
 
+// Day 4
+const Day4 = struct {
+    content: []const u8,
+    rows: usize,
+    cols: usize,
+
+    fn pos(self: *Day4, row: i32, col: i32) ?u8 {
+        if (row < 0 or row >= self.rows or col < 0 or col >= self.cols) {
+            return null;
+        }
+
+        return self.content[@as(usize, @intCast(row)) * (self.cols + 1) + @as(usize, @intCast(col))];
+    }
+
+    fn countXmas(self: *Day4, row: i32, col: i32) i32 {
+        if (self.pos(row, col) != 'X') {
+            return 0;
+        }
+
+        const tail = "MAS";
+
+        var tails: i32 = 0;
+        var dy: i32 = -1;
+
+        while (dy <= 1) : (dy += 1) {
+            var dx: i32 = -1;
+            outer: while (dx <= 1) : (dx += 1) {
+                if (dx == 0 and dy == 0) continue;
+
+                var tx = col + dx;
+                var ty = row + dy;
+                for (tail) |match| {
+                    if (self.pos(ty, tx) == match) {
+                        tx += dx;
+                        ty += dy;
+                    } else {
+                        continue :outer;
+                    }
+                }
+
+                tails += 1;
+            }
+        }
+
+        return tails;
+    }
+
+    fn day4(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !i32 {
+        const content = try readFile(alloc, dataDir, "day4input.txt");
+        defer alloc.free(content);
+        return countContentXmas(content);
+    }
+
+    fn countContentXmas(content: []const u8) !i32 {
+        const cols = std.mem.indexOfScalar(u8, content, '\n') orelse 0;
+        const rows = (content.len + 1) / (cols + 1);
+
+        var state = Day4{
+            .content = content,
+            .cols = cols,
+            .rows = rows,
+        };
+
+        var total: i32 = 0;
+        for (0..state.rows) |row| {
+            for (0..state.cols) |col| {
+                total += state.countXmas(@intCast(row), @intCast(col));
+            }
+        }
+
+        return total;
+    }
+};
+
+test "day4 test 1" {
+    const content =
+        \\MMMSXXMASM
+        \\MSAMXMSMSA
+        \\AMXSXMAAMM
+        \\MSAMASMSMX
+        \\XMASAMXAMM
+        \\XXAMMXXAMA
+        \\SMSMSASXSS
+        \\SAXAMASAAA
+        \\MAMMMXMMMM
+        \\MXMXAXMASX
+    ;
+
+    try std.testing.expectEqual(18, try Day4.countContentXmas(content));
+}
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -227,6 +320,7 @@ pub fn main() !void {
     try stdout.print("Day 1: dist={!d} similarity={!d}\n", try day1(alloc, dataDir));
     try stdout.print("Day 2: {d}\n", .{try day2(dataDir)});
     try stdout.print("Day 3: {d}\n", .{try day3(alloc, dataDir)});
+    try stdout.print("Day 4: {d}\n", .{try Day4.day4(alloc, dataDir)});
 
     try bw.flush();
 }
