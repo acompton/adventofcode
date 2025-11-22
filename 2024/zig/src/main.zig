@@ -320,6 +320,59 @@ test "day4 test 1" {
     try std.testing.expectEqual(9, res.part2);
 }
 
+const Day5 = struct {
+    fn day5(alloc: std.mem.Allocator, dataDir: std.fs.Dir) !u32 {
+        return day5CheckContent(alloc, try readFile(alloc, dataDir, "day5input.txt"));
+    }
+
+    fn day5CheckContent(alloc: std.mem.Allocator, content: []const u8) u32 {
+        const buf = std.io.fixedBufferStream(content);
+        const bufReader = buf.reader();
+
+        var line: [64]u8 = undefined;
+        while (bufReader.streamUntilDelimiter(line, '\n', line.len)) |s| {
+
+        }
+
+        return @intCast(content.len);
+    }
+};
+
+test "day 5 test 1" {
+    const content =
+        \\47|53
+        \\97|13
+        \\97|61
+        \\97|47
+        \\75|29
+        \\61|13
+        \\75|53
+        \\29|13
+        \\97|29
+        \\53|29
+        \\61|53
+        \\97|53
+        \\61|29
+        \\47|13
+        \\75|47
+        \\97|75
+        \\47|61
+        \\75|61
+        \\47|29
+        \\75|13
+        \\53|13
+        \\
+        \\75,47,61,53,29
+        \\97,61,53,29,13
+        \\75,29,13
+        \\75,97,47,61,53
+        \\61,13,29
+        \\97,13,75,29,47
+    ;
+
+    try std.testing.expectEqual(143, Day5.day5CheckContent(std.testing.allocator, content));
+}
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -342,6 +395,7 @@ pub fn main() !void {
     try stdout.print("Day 2: {d}\n", .{try day2(dataDir)});
     try stdout.print("Day 3: {d}\n", .{try day3(alloc, dataDir)});
     try stdout.print("Day 4: {d} {d}\n", try Day4.day4(alloc, dataDir));
+    try stdout.print("Day 5: {d}\n", .{try Day5.day5(alloc, dataDir)});
 
     try bw.flush();
 }
