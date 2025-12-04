@@ -62,8 +62,7 @@ pub fn part2(text: []const u8) !i32 {
                     curPos += 100;
                 } else if (curPos > 99) {
                     curPos -= 100;
-                } else if (curPos == 0) {
-                }
+                } else if (curPos == 0) {}
             }
         }
         elem = iter.next();
