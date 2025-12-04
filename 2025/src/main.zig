@@ -16,11 +16,13 @@ pub fn main() !void {
     defer dataDir.close();
 
     const day1Input = try _2025.readFile(alloc, dataDir, "day1input.txt");
+    const day2Input = try _2025.readFile(alloc, dataDir, "day2input.txt");
 
-    try stdout.interface.writeAll("Day\tPart1\tPart2\n");
+    try stdout.interface.print("{s}\t{s:15}\t{s:15}\n", .{"Day", "Part1", "Part2"});
     try printResult(&stdout.interface, 1, try _2025.day1.part1(day1Input), try _2025.day1.part2(day1Input));
+    try printResult(&stdout.interface, 2, try _2025.day2.part1(day2Input), try _2025.day2.part2(day2Input));
 }
 
-fn printResult(out: *std.io.Writer, day: i32, part1: i32, part2: i32) !void {
-    out.print("{d}\t{d}\t{d}\n", .{ day, part1, part2 }) catch {};
+fn printResult(out: *std.io.Writer, day: i32, part1: anytype, part2: anytype) !void {
+    out.print("{d}\t{d:15}\t{d:15}\n", .{ day, part1, part2 }) catch {};
 }
